@@ -61,7 +61,7 @@ static int immediate_quit = 0;
 void duel_command(char *exp,int from_tty);
 
 static PyObject *gdb;
-static PyObject *find_symbol, *find_global_symbol, *find_type;
+static PyObject *find_symbol, *find_global_symbol, *find_type, *print;
 static PyObject *selected_inferior, *selected_frame, *newest_frame, *make_value;
 static int STRUCT_DOMAIN, VAR_DOMAIN;
 static int TYPE_CODE_BOOL, TYPE_CODE_INT, TYPE_CODE_FLT, TYPE_CODE_VOID,
@@ -87,6 +87,7 @@ PyMODINIT_FUNC initduelpy(void) {
 
   /* get all pointers to objects that we'll need at run time */
   gdb = PyImport_AddModule("gdb");
+  print = PyObject_GetAttrString(gdb, "write");
   find_symbol = PyObject_GetAttrString(gdb, "lookup_symbol");
   find_global_symbol = PyObject_GetAttrString(gdb, "lookup_global_symbol");
   find_type = PyObject_GetAttrString(gdb, "lookup_type");
@@ -126,7 +127,11 @@ PyMODINIT_FUNC initduelpy(void) {
 /************ apis ******************/
 
 static int vprintf_filtered(const char *format, va_list ap) {
-  return vprintf(format, ap);
+  char *str;
+  int res = vasprintf(&str, format, ap);
+  PyObject_CallFunction(print, "s", str);
+  free(str);
+  return res;
 }
 
 /* unused */
