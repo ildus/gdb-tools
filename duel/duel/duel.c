@@ -259,7 +259,7 @@ EXAMPLES\n\
        dl head-->(next!=?_)                handle termination with p->next==p\n\
        dl root-->(left,right)->key         expand binary tree, show keys\n\
        dl root-->(left,right)->(           check bin tree sorted by key\n\
-          (left!=?0)->key>=?key, (right    !=?0 )->key<=?key)\n\
+          (left!=?0)->key>=?key, (right!=?0)->key<=?key)\n\
 \n\
        dl (1000..=>if(&&/(2,3.._-1=>__%%_   find first 10 primes over 1000\n\
                   ) _)[[..10]]\n\

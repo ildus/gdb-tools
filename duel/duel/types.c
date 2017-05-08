@@ -98,7 +98,7 @@ PROC duel_mkctype_struct_field(tctype *t,int field_no,char *name,
 
 /* create an enum type. The enumerators are not set here, but
  * filled individually with the next function
- * again like sturct, we support zero enums. I am not sure its needed,
+ * again like struct, we support zero enums. I am not sure it's needed,
  * but better safe than sorry.
  */
 

@@ -174,7 +174,7 @@ typedef struct {                /* a field (of struct) info */
 typedef struct {                /* an enumerator (constant of an enum)  info */
   char *name ;                  /* enumerator name */
   int val ;                     /* value assigned to the name */
-                                /* question: ansi-C say cosnt fit in int?*/
+                                /* question: ansi-C say const fit in int?*/
 } tctype_enumerator ;
 
 
