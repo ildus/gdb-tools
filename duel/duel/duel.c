@@ -623,8 +623,9 @@ void duel_parse_and_eval(char *s)
       duel_redirectable_output_init();
       first=0 ;
    }
-   if(!s || *s==0) {  /* no input, give some help */
-       duel_printf("\
+   if(setjmp(duel_abort_jmp)==0) {              /* set abort point */
+     if(!s || *s==0) {  /* no input, give some help */
+         duel_printf("\
 Supported DUEL commands:\n\
 duel help      - give basic help (shortcut: dl ?)\n\
 duel longhelp  - give a longer help (dl ?\?)\n\
@@ -633,39 +634,38 @@ duel operators - operators summary (dl ops)\n\
 duel aliases   - show current aliases (dl alias)\n\
 duel clear     - clear all aliases\n\
 duel debug     - toggle duel debug mode\n");
-       return ;
-   }
-   if(strcmp(s,"?")==0 || strcmp(s,"help")==0) {
-       help();
-       return ;
-   }
-   if(strcmp(s,"?\?")==0 || strcmp(s,"longhelp")==0) {
-       longhelp();
-       return ;
-   }
-   if(strcmp(s,"examples")==0 || strcmp(s,"ex")==0 ) {
-       examples();
-       return ;
-   }
-   if(strcmp(s,"operators")==0 || strcmp(s,"ops")==0) {
-       operators();
-       return ;
-   }
-   if(strcmp(s,"debug")==0) {           /* turn debugging of duel itself */
-       duel_debug= !duel_debug ;
-       duel_printf("duel debug mode %d\n",duel_debug);
-       return ;
-   }
-   if(strcmp(s,"clear")==0) {
-       duel_clear_aliases();
-       duel_printf("Aliases table cleared\n");
-       return ;
-   }
-   if(strcmp(s,"alias")==0 || strcmp(s,"aliases")==0) {
-       duel_show_aliases();
-       return ;
-   }
-   if(setjmp(duel_abort_jmp)==0) {              /* set abort point */
+         return ;
+     }
+     if(strcmp(s,"?")==0 || strcmp(s,"help")==0) {
+         help();
+         return ;
+     }
+     if(strcmp(s,"?\?")==0 || strcmp(s,"longhelp")==0) {
+         longhelp();
+         return ;
+     }
+     if(strcmp(s,"examples")==0 || strcmp(s,"ex")==0 ) {
+         examples();
+         return ;
+     }
+     if(strcmp(s,"operators")==0 || strcmp(s,"ops")==0) {
+         operators();
+         return ;
+     }
+     if(strcmp(s,"debug")==0) {           /* turn debugging of duel itself */
+         duel_debug= !duel_debug ;
+         duel_printf("duel debug mode %d\n",duel_debug);
+         return ;
+     }
+     if(strcmp(s,"clear")==0) {
+         duel_clear_aliases();
+         duel_printf("Aliases table cleared\n");
+         return ;
+     }
+     if(strcmp(s,"alias")==0 || strcmp(s,"aliases")==0) {
+         duel_show_aliases();
+         return ;
+     }
      if((root=duel_parse(s))!=NULL) {
        tvalue v ;
        duel_set_input_string(s);	  /* for src-location err management */

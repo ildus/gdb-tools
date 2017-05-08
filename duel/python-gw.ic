@@ -17,6 +17,9 @@ static void make_cleanup(void (*callback)(void*), int i) {
 
 #include <stdlib.h>
 
+void duel_command(char *exp,int from_tty);
+void duel_abort(void);
+
 #define QUIT do { } while(0)
 #define BITS_BIG_ENDIAN 0
 #define class_vars 0
@@ -57,8 +60,6 @@ static struct type *builtin_type_int, *builtin_type_unsigned_int,
 static int immediate_quit = 0;
 
 /******** python stuff **************/
-
-void duel_command(char *exp,int from_tty);
 
 static PyObject *gdb;
 static PyObject *find_symbol, *find_global_symbol, *find_type, *print;
@@ -131,6 +132,10 @@ static int vprintf_filtered(const char *format, va_list ap) {
   int res = vasprintf(&str, format, ap);
   PyObject_CallFunction(print, "s", str);
   free(str);
+  if (PyErr_Occurred()) {
+    PyErr_Clear();
+    duel_abort();
+  }
   return res;
 }
 
