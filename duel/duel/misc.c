@@ -84,7 +84,7 @@ PROC duel_free_nodes(tnode *n)
 /* Aliases management */
 
 typedef struct sduel_var {      /* an alias */
-    char *name ;
+    const char *name ;
     tvalue val ;
     struct sduel_var *next ;
  } tduel_var ;
@@ -92,7 +92,7 @@ tduel_var *duel_vars_head ;
 
 /* find the value of a duel variable, if exist (else return null */
 
-FUNC tvalue* duel_find_alias(char *name)
+FUNC tvalue* duel_find_alias(const char *name)
 {
    tduel_var *p ;
    for(p=duel_vars_head ; p ; p=p->next) {
@@ -103,7 +103,7 @@ FUNC tvalue* duel_find_alias(char *name)
 
 /* set a value of a duel alias. Create var as needed */
 
-PROC duel_set_alias(char *name,tvalue *v)
+PROC duel_set_alias(const char *name,tvalue *v)
 {
    tduel_var *p ;
    tvalue *found = duel_find_alias(name) ;

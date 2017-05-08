@@ -17,7 +17,7 @@
  * duel_flush	  used by duel to flush the output.
  */
 
-PROC duel_printf(char *fmt, ...)    /* like printf, but for duel output */
+PROC duel_printf(const char *fmt, ...)    /* like printf, but for duel output */
 {
   va_list args;
   va_start(args, fmt);

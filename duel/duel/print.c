@@ -280,7 +280,7 @@ PROC duel_print_value(tvalue *v)
 	     duel_printf(topipe? "$$$VAL: { " : " = { ");
 	     for(i=0 ; i<t->u.f.fields_no ; i++) {
                tvalue u ;
-               char *name=t->u.f.fields[i].name ;
+               const char *name=t->u.f.fields[i].name ;
                duel_get_dot_name(v,name,&u);
                duel_sprint_scalar_value(s,&u);
                duel_printf("%s = %s",name,s) ;

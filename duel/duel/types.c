@@ -62,7 +62,7 @@ FUNC tctype* duel_mkctype_func(tctype *t)
  * this is especially true for gdb itself!
  */
 
-FUNC tctype* duel_mkctype_struct(char *name,size_t size,int fields_no,
+FUNC tctype* duel_mkctype_struct(const char *name,size_t size,int fields_no,
 				 bool is_union)
 {
   tctype *n ;
@@ -83,7 +83,7 @@ FUNC tctype* duel_mkctype_struct(char *name,size_t size,int fields_no,
 
 /* insert field (field_no) into sturct/union (t), with type fctype
  */
-PROC duel_mkctype_struct_field(tctype *t,int field_no,char *name,
+PROC duel_mkctype_struct_field(tctype *t,int field_no,const char *name,
 			       int bitpos,int bitlen, tctype *fctype)
 {
    tctype_field *f ;
@@ -102,7 +102,7 @@ PROC duel_mkctype_struct_field(tctype *t,int field_no,char *name,
  * but better safe than sorry.
  */
 
-FUNC tctype* duel_mkctype_enum(char *name,tctype_kind real_type_kind,
+FUNC tctype* duel_mkctype_enum(const char *name,tctype_kind real_type_kind,
 			       size_t size,int enumerators_no)
 {
   tctype *n ;
@@ -126,7 +126,7 @@ FUNC tctype* duel_mkctype_enum(char *name,tctype_kind real_type_kind,
 
 /* insert enumerator (enumerator_no_ into an enum type (t), with given name/val
  */
-PROC duel_mkctype_enumerator(tctype *t,int enumerator_no,char *name,int val)
+PROC duel_mkctype_enumerator(tctype *t,int enumerator_no,const char *name,int val)
 {
    tctype_enumerator *e ;
    duel_assert(t->type_kind==CTK_ENUM);
@@ -198,5 +198,3 @@ PROC duel_init_basic_ctypes(void)
     else duel_gen_error("bad size_t size",0);
    }
 }
-
-

@@ -8,13 +8,13 @@
 FUNC tctype* duel_mkctype_ptr(tctype *t);
 FUNC tctype* duel_mkctype_func(tctype *t);
 FUNC tctype* duel_mkctype_array(tctype *t,int size);
-FUNC tctype* duel_mkctype_struct(char *name,size_t size,int fields_no,
+FUNC tctype* duel_mkctype_struct(const char *name,size_t size,int fields_no,
 				 bool is_union);
-PROC duel_mkctype_struct_field(tctype *t,int field_no,char *name,
+PROC duel_mkctype_struct_field(tctype *t,int field_no,const char *name,
 			       int bitpos,int bitlen, tctype *fctype);
-FUNC tctype* duel_mkctype_enum(char *name,tctype_kind real_type_kind,
+FUNC tctype* duel_mkctype_enum(const char *name,tctype_kind real_type_kind,
 			       size_t size,int enumerators_no);
-PROC duel_mkctype_enumerator(tctype *t,int enumerator_no,char *name,int val);
+PROC duel_mkctype_enumerator(tctype *t,int enumerator_no,const char *name,int val);
 
 PROC duel_init_basic_ctypes(void);
 
@@ -32,12 +32,12 @@ FUNC tnode* duel_parse(char *s);
 
 PROC duel_reset_eval(void);
 FUNC bool duel_eval(tnode *n,tvalue *v);
-FUNC bool duel_get_dot_name(tvalue *v,char *name,tvalue *ret);
+FUNC bool duel_get_dot_name(tvalue *v,const char *name,tvalue *ret);
 
 FUNC tnode* duel_set_eval_loc(tnode *n);
 FUNC char* duel_set_input_string(char *s);
 PROC duel_op_error(char *mesg,char *op,tvalue *v1,tvalue *v2);
-PROC duel_gen_error(char *mesg,char *arg1);
+PROC duel_gen_error(const char *mesg,const char *arg1);
 
 PROC duel_parse_and_eval(char *s);
 
@@ -58,7 +58,7 @@ PROC duel_find_func_frame(tvalue *v,char *op);
 
 /* output management */
 
-PROC duel_printf(char *fmt, ...);
+PROC duel_printf(const char *fmt, ...);
 PROC duel_flush(void);
 PROC duel_redirectable_output_start(char *);
 PROC duel_redirectable_output_end(void);
@@ -75,11 +75,11 @@ FUNC bool duel_put_target_bytes(ttarget_ptr to,void *from,size_t n);
 
 FUNC bool duel_get_target_bitfield(ttarget_ptr struct_at,int bitpos,
 				    int bitlen,void *to,tctype_kind tkind);
-FUNC bool duel_get_target_variable(char *name, int frame_no, tvalue *v);
-FUNC tctype* duel_get_target_typedef(char *name);
-FUNC tctype* duel_get_target_struct_tag(char *name);
-FUNC tctype* duel_get_target_union_tag(char *name);
-FUNC tctype* duel_get_target_enum_tag(char *name);
+FUNC bool duel_get_target_variable(const char *name, int frame_no, tvalue *v);
+FUNC tctype* duel_get_target_typedef(const char *name);
+FUNC tctype* duel_get_target_struct_tag(const char *name);
+FUNC tctype* duel_get_target_union_tag(const char *name);
+FUNC tctype* duel_get_target_enum_tag(const char *name);
 FUNC ttarget_ptr duel_alloc_target_space(size_t n);
 
 FUNC int duel_get_frames_number(void);
@@ -94,8 +94,8 @@ FUNC char* strncpyz(char *to,char *from,size_t len);
 PROC duel_free_val_list(tval_list *l);
 PROC duel_free_nodes(tnode *);
 
-FUNC tvalue* duel_find_alias(char *name);
-PROC duel_set_alias(char *name,tvalue *v);
+FUNC tvalue* duel_find_alias(const char *name);
+PROC duel_set_alias(const char *name,tvalue *v);
 PROC duel_clear_aliases(void);
 PROC duel_show_aliases(void);
 

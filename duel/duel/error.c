@@ -93,7 +93,7 @@ PROC duel_op_error(char *mesg,char *op,tvalue *v1,tvalue *v2)
  * location (node) is still displayed
  */
 
-PROC duel_gen_error(char *mesg,char *arg1)
+PROC duel_gen_error(const char *mesg,const char *arg1)
 {
     duel_redirectable_output_abort();
     print_src_pos();

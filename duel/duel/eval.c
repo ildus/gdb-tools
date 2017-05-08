@@ -84,7 +84,7 @@ PROC duel_reset_eval(void)   /* reset evaluation states from previous eval */
  * the symbolic value is not set.
  * if top_only, looks only at the top of the stack.
  */
-LFUNC bool find_dot_name(char *name,tvalue *v,bool top_only)
+LFUNC bool find_dot_name(const char *name,tvalue *v,bool top_only)
 {
     int i,j ;
     tctype_field *f ;
@@ -257,7 +257,7 @@ LPROC pop_dot_stack(void)
  * return false if name not found.
  */
 
-FUNC bool duel_get_dot_name(tvalue *v,char *name,tvalue *ret)
+FUNC bool duel_get_dot_name(tvalue *v,const char *name,tvalue *ret)
 {
     bool ok ;
     push_dot_stack(v,v);
@@ -766,7 +766,7 @@ FUNC bool duel_eval(tnode *n,tvalue *v)
              else
              if(n->op==OP_SIZ) {
                  if(n->eval.level==1) {
-		     char *tname=n->kids[0]->ctype->name ;
+		     const char *tname=n->kids[0]->ctype->name ;
                      duel_assert(n->kids[0]->node_kind==NK_CTYPE);
                      v->val_kind=VK_RVALUE ;
                      v->ctype=ctype_size_t ;

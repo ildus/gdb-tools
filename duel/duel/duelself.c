@@ -135,7 +135,7 @@ PROC duel_target_func_call(tvalue *func, tvalue *parms[],
 int gint ;	/* global variable recognized */
 char **main_s ;	/* point to main's 's' */
 
-FUNC bool duel_get_target_variable(char *name, int frame_no, tvalue *v)
+FUNC bool duel_get_target_variable(const char *name, int frame_no, tvalue *v)
 {
    v->val_kind=VK_LVALUE ;
    if(frame_no<=0 && strcmp(name,"s")==0) {

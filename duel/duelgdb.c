@@ -106,7 +106,7 @@
 
 #include <stdarg.h>
 
-PROC duel_printf(char *fmt, ...)    /* like printf, but for duel output */
+PROC duel_printf(const char *fmt, ...)    /* like printf, but for duel output */
 {
   va_list args;
   va_start(args, fmt);
@@ -409,7 +409,7 @@ LFUNC tctype* duel_convert_type_from_gdb(struct type *t)
       break;
    case TYPE_CODE_INT: {
       int i, type=0;
-      char *s=TYPE_NAME(t);
+      const char *s=TYPE_NAME(t);
       while (*s)
         for (i=0; name_to_codetype[i].name; i++) {
           if (strncmp(s,name_to_codetype[i].name,name_to_codetype[i].len) == 0) {
@@ -462,7 +462,7 @@ LFUNC tctype* duel_convert_type_from_gdb(struct type *t)
    case TYPE_CODE_STRUCT:
    case TYPE_CODE_UNION:
       { int i,n=TYPE_NFIELDS(t);
-        char *name=TYPE_NAME(t);
+        const char *name=TYPE_NAME(t);
 	if(name == NULL) name="" ; /* duel can't handle null ptr! */
         if(strncmp(name,"struct ",7)==0) name+=7 ;
         if(strncmp(name,"union ",6)==0) name+=6 ;
@@ -482,7 +482,7 @@ LFUNC tctype* duel_convert_type_from_gdb(struct type *t)
          * FIELDS contain the tags, BITPOS is the assigned value.
          */
       { int i,n=TYPE_NFIELDS(t),len=TYPE_LENGTH(t);
-	char *name=TYPE_NAME(t);
+	const char *name=TYPE_NAME(t);
         tctype_kind k ;
 	if(name==NULL) name="" ;	/* duel can't handle null ptr */
         if(strncmp(name,"enum ",5)==0) name+=5 ;
@@ -551,7 +551,7 @@ LFUNC struct frame_info * duel_select_frame(int frame_no)
     return frame ;
 }
 
-FUNC bool duel_get_target_variable(char *name, int frame_no, tvalue *v)
+FUNC bool duel_get_target_variable(const char *name, int frame_no, tvalue *v)
 {
   struct symbol *sym;
   struct frame_info * frame ;
@@ -622,7 +622,7 @@ FUNC ttarget_ptr duel_get_function_for_frame(int frame_no)
    return (ttarget_ptr) VALUE_ADDRESS(val) ;
 }
 
-FUNC tctype* duel_get_target_typedef(char *name)
+FUNC tctype* duel_get_target_typedef(const char *name)
 {
   struct symbol *sym;
   sym = lookup_symbol (name, get_selected_block(0), VAR_DOMAIN,0,0);
@@ -633,7 +633,7 @@ FUNC tctype* duel_get_target_typedef(char *name)
   return duel_convert_type_from_gdb(SYMBOL_TYPE(sym));
 }
 
-FUNC tctype* duel_get_target_struct_tag(char *name)
+FUNC tctype* duel_get_target_struct_tag(const char *name)
 {
   struct symbol *sym;
   sym = lookup_symbol (name, get_selected_block(0), STRUCT_DOMAIN,0,0);
@@ -644,7 +644,7 @@ FUNC tctype* duel_get_target_struct_tag(char *name)
   return duel_convert_type_from_gdb(SYMBOL_TYPE(sym));
 }
 
-FUNC tctype* duel_get_target_union_tag(char *name)
+FUNC tctype* duel_get_target_union_tag(const char *name)
 {
   struct symbol *sym;
   sym = lookup_symbol (name, get_selected_block(0), STRUCT_DOMAIN,0,0);
@@ -655,7 +655,7 @@ FUNC tctype* duel_get_target_union_tag(char *name)
   return duel_convert_type_from_gdb(SYMBOL_TYPE(sym));
 }
 
-FUNC tctype* duel_get_target_enum_tag(char *name)
+FUNC tctype* duel_get_target_enum_tag(const char *name)
 {
   struct symbol *sym;
   sym = lookup_symbol (name, get_selected_block(0), STRUCT_DOMAIN,0,0);

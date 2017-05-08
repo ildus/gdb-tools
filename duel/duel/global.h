@@ -166,21 +166,20 @@ typedef enum {     /* 'C' Type atomic primitive Kinds (CTK_) */
  } tctype_kind ;
 
 typedef struct {                /* a field (of struct) info */
-  char *name ;                  /* field name */
+  const char *name ;            /* field name */
   struct sctype *ctype ;        /* field type */
   int bitpos, bitlen ;          /* for bit fields only */
 } tctype_field ;
 
 typedef struct {                /* an enumerator (constant of an enum)  info */
-  char *name ;                  /* enumerator name */
+  const char *name ;            /* enumerator name */
   int val ;                     /* value assigned to the name */
-                                /* question: ansi-C say const fit in int?*/
 } tctype_enumerator ;
 
 
 typedef struct sctype {       /* a 'C' type description  */
    tctype_kind type_kind ;
-   char *name ;               /* named of this type, if any       */
+   const char *name ;         /* named of this type, if any       */
    size_t size ;              /* size (total bytes) for this type */
    union {
     struct sctype *kid ;       /* pointer to next atomic type               */
