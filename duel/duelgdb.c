@@ -387,15 +387,14 @@ LFUNC tctype* duel_convert_type_from_gdb(struct type *t)
 {
   tctype *ct=duel_find_hash(t);
   if(ct) return ct ;
+  int type_code=TYPE_CODE(t);
 
   if (duel_debug)
-    duel_printf("gdb type: {%d, %s}\n", TYPE_CODE(t), TYPE_NAME(t));
+    duel_printf("gdb type: {%d, %s}\n", type_code, TYPE_NAME(t));
 
-  switch (TYPE_CODE (t)) {
-   case TYPE_CODE_BOOL:
+  if (type_code == TYPE_CODE_BOOL) {
       if(strcmp(TYPE_NAME(t),"bool")==0) ct=ctype_uchar ; /* XXX HACK */
-      break;
-   case TYPE_CODE_INT: {
+  } else if (type_code == TYPE_CODE_INT) {
       int i, type=0;
       const char *s=TYPE_NAME(t);
       while (*s)
@@ -417,41 +416,29 @@ LFUNC tctype* duel_convert_type_from_gdb(struct type *t)
       else if(type == INTTYPE_UNSIGNED + INTTYPE_LONG)  ct=ctype_ulong ;
       else if(type == INTTYPE_LONG + INTTYPE_LONG) ct=ctype_longlong ;
       else if(type == INTTYPE_UNSIGNED + INTTYPE_LONG + INTTYPE_LONG)  ct=ctype_ulonglong ;
-      break;
-     }
-   case TYPE_CODE_FLT:
+  } else if (type_code == TYPE_CODE_FLT) {
       if(strcmp(TYPE_NAME(t),"float")==0)  ct=ctype_float ;
       else
       if(strcmp(TYPE_NAME(t),"double")==0) ct=ctype_double ;
-      break;
-   case TYPE_CODE_VOID:
+  } else if (type_code == TYPE_CODE_VOID) {
       if(strcmp(TYPE_NAME(t),"void")==0) ct=ctype_void ;
-      break;
-   case TYPE_CODE_PTR:
-   case TYPE_CODE_REF:
-      {
+  } else if (type_code == TYPE_CODE_PTR || type_code == TYPE_CODE_REF) {
        /* the pointer might get defined when converting the target, so
         * check the hashing again (reason: self-referencing structs)
         */
         tctype *target=duel_convert_type_from_gdb(TYPE_TARGET_TYPE(t));
         if((ct=duel_find_hash(t))==NULL) ct=duel_mkctype_ptr(target);
-      }
-      break ;
-   case TYPE_CODE_FUNC:
-      ct=duel_mkctype_func(duel_convert_type_from_gdb(TYPE_TARGET_TYPE(t)));
-      break ;
-   case TYPE_CODE_ARRAY:
-      { int n=TYPE_LENGTH(TYPE_TARGET_TYPE(t));
+  } else if (type_code == TYPE_CODE_FUNC) {
+        ct=duel_mkctype_func(duel_convert_type_from_gdb(TYPE_TARGET_TYPE(t)));
+  } else if (type_code == TYPE_CODE_ARRAY) {
+        int n=TYPE_LENGTH(TYPE_TARGET_TYPE(t));
         if(n!=0) n=TYPE_LENGTH(t)/n;
         ct=duel_mkctype_array(
                duel_convert_type_from_gdb(TYPE_TARGET_TYPE(t)),n);
-      }
-      break;
-   case TYPE_CODE_STRUCT:
-   case TYPE_CODE_UNION:
-      { int i,n=TYPE_NFIELDS(t);
+  } else if (type_code == TYPE_CODE_STRUCT || type_code == TYPE_CODE_UNION) {
+        int i,n=TYPE_NFIELDS(t);
         const char *name=TYPE_NAME(t);
-	if(name == NULL) name="" ; /* duel can't handle null ptr! */
+        if(name == NULL) name="" ; /* duel can't handle null ptr! */
         if(strncmp(name,"struct ",7)==0) name+=7 ;
         if(strncmp(name,"union ",6)==0) name+=6 ;
         ct=duel_mkctype_struct(name,TYPE_LENGTH(t),n,
@@ -461,15 +448,13 @@ LFUNC tctype* duel_convert_type_from_gdb(struct type *t)
            duel_mkctype_struct_field(ct,i,TYPE_FIELD_NAME(t,i),
                 TYPE_FIELD_BITPOS(t,i), TYPE_FIELD_BITSIZE(t,i),
                 duel_convert_type_from_gdb(TYPE_FIELD_TYPE(t,i)));
-      }
-   break ;
-   case TYPE_CODE_ENUM:
+  } else if (type_code == TYPE_CODE_ENUM) {
         /* TYPE_LENGTH(t) tell how big it is. I assume signed integral types.
          * it is unclear if gdb supports unsigned enums and how
          * (e.g. enum { x=0,y=250 } stored in uchar
          * FIELDS contain the tags, BITPOS is the assigned value.
          */
-      { int i,n=TYPE_NFIELDS(t),len=TYPE_LENGTH(t);
+       int i,n=TYPE_NFIELDS(t),len=TYPE_LENGTH(t);
 	const char *name=TYPE_NAME(t);
         tctype_kind k ;
 	if(name==NULL) name="" ;	/* duel can't handle null ptr */
@@ -493,13 +478,8 @@ LFUNC tctype* duel_convert_type_from_gdb(struct type *t)
         for(i=0 ; i<n ; i++)
            duel_mkctype_enumerator(ct,i,TYPE_FIELD_NAME(t,i),
                 TYPE_FIELD_BITPOS(t,i));
-      }
-   break ;
-   case TYPE_CODE_TYPEDEF:
+  } else if (type_code == TYPE_CODE_TYPEDEF) {
       ct=duel_convert_type_from_gdb(check_typedef(t));
-      break ;
-   case TYPE_CODE_UNDEF:
-      break;
   }
   if(ct==0) duel_fatal("unsupported C type returned by gdb");
   duel_add_hash(t,ct);
