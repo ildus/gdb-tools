@@ -1,0 +1,8 @@
+*.a
+*.o
+*.pyc
+.*.swp
+.gdb_history
+duel/build
+duel/tags
+duel/y.tab.c
