@@ -1,3 +1,20 @@
+#include <Python.h>
+
+/* XXX don't leak PyObjects */
+
+/******* memory handling ************/
+
+static void *xmalloc(size_t size) {
+  return malloc(size);
+}
+
+void (*cleanup_callback)(void *) = NULL;
+static void make_cleanup(void (*callback)(void*), int i) {
+  cleanup_callback = callback;
+}
+
+/******** declarations **************/
+
 #include <stdlib.h>
 
 #define QUIT do { } while(0)
@@ -7,27 +24,29 @@
 typedef unsigned long long CORE_ADDR;
 typedef long long LONGEST;
 
-struct value;
-struct type;
-struct frame_info;
-struct block;
-struct symbol;
-struct minimal_symbol
-{
+/* define a PyObject wrapper struct and a helper to cast PyObject to a wrapper
+   structure, converting None to NULL */
+#define make_wrapper(TAG)                                               \
+struct TAG { PyObject py; };                                            \
+static struct TAG *to_ ## TAG(PyObject *o) {                            \
+  if (o && o != Py_None && !PyErr_Occurred())                           \
+    return (struct TAG*)o;                                              \
+  PyErr_Clear();                                                        \
+  return NULL;                                                          \
+}
+
+make_wrapper(frame_info)
+make_wrapper(block)
+make_wrapper(symbol)
+make_wrapper(value)
+make_wrapper(type)
+
+struct minimal_symbol {
   CORE_ADDR address;
   enum { mst_data, mst_bss, mst_text } type;
 };
 
-enum class_kind { LOC_TYPEDEF, LOC_STATIC, LOC_BLOCK, LOC_CONST };
-
-enum domain { VAR_DOMAIN, STRUCT_DOMAIN };
-
 enum lval_kind { lval_memory, not_lval, lval_register };
-
-enum type_code { TYPE_CODE_UNDEF, TYPE_CODE_BOOL, TYPE_CODE_INT, TYPE_CODE_FLT,
-  TYPE_CODE_VOID, TYPE_CODE_PTR, TYPE_CODE_REF, TYPE_CODE_FUNC,
-  TYPE_CODE_ARRAY, TYPE_CODE_STRUCT, TYPE_CODE_UNION, TYPE_CODE_ENUM,
-  TYPE_CODE_TYPEDEF };
 
 static struct type *builtin_type_int, *builtin_type_unsigned_int,
                    *builtin_type_long, *builtin_type_unsigned_long,
@@ -35,125 +54,304 @@ static struct type *builtin_type_int, *builtin_type_unsigned_int,
                    *builtin_type_float, *builtin_type_double,
                    *builtin_type_void;
 
-static int immediate_quit= 0;
+static int immediate_quit = 0;
 
-static int vprintf_filtered(const char *format, va_list ap)
-{ return 0; }
+/******** python stuff **************/
 
-// MEMROOT-like to free all at once
-static void *xmalloc(size_t size) {
-  return malloc(size);
+void duel_command(char *exp,int from_tty);
+
+static PyObject *gdb;
+static PyObject *find_symbol, *find_global_symbol, *find_type;
+static PyObject *selected_inferior, *selected_frame, *newest_frame, *make_value;
+static int STRUCT_DOMAIN, VAR_DOMAIN;
+static int TYPE_CODE_BOOL, TYPE_CODE_INT, TYPE_CODE_FLT, TYPE_CODE_VOID,
+           TYPE_CODE_PTR, TYPE_CODE_REF, TYPE_CODE_FUNC, TYPE_CODE_ARRAY,
+           TYPE_CODE_STRUCT, TYPE_CODE_UNION, TYPE_CODE_ENUM, TYPE_CODE_TYPEDEF;
+static int LOC_TYPEDEF, LOC_STATIC, LOC_BLOCK, LOC_CONST;
+
+static PyObject *do_duel(PyObject *self, PyObject *args) {
+  char *expr;
+  if (!PyArg_ParseTuple(args, "s", &expr)) Py_RETURN_NONE;
+  duel_command(expr, 1);
+  if (cleanup_callback) cleanup_callback(0);
+  Py_RETURN_NONE;
 }
 
-static int make_cleanup(void (*callback)(void*), int i)
-{ return 0; }
+static PyMethodDef DuelMethods[] = {
+  {"do_duel",  do_duel, METH_VARARGS, "Duel parse and eval"},
+  {NULL, NULL, 0, NULL}
+};
 
-static int add_com(const char *com, int i, void (*callback)(char *, int), const char *descr)
-{ return 0; }
+PyMODINIT_FUNC initduelpy(void) {
+  Py_InitModule("duelpy", DuelMethods);
 
-static int add_com_alias(const char *alias, const char *com, int i, int j)
-{ return 0; }
+  /* get all pointers to objects that we'll need at run time */
+  gdb = PyImport_AddModule("gdb");
+  find_symbol = PyObject_GetAttrString(gdb, "lookup_symbol");
+  find_global_symbol = PyObject_GetAttrString(gdb, "lookup_global_symbol");
+  find_type = PyObject_GetAttrString(gdb, "lookup_type");
+  selected_inferior = PyObject_GetAttrString(gdb, "selected_inferior");
+  selected_frame = PyObject_GetAttrString(gdb, "selected_frame");
+  newest_frame = PyObject_GetAttrString(gdb, "newest_frame");
+  make_value = PyObject_GetAttrString(PyObject_GetAttrString(gdb, "Value"), "__init__");
+  STRUCT_DOMAIN = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_STRUCT_DOMAIN"));
+  VAR_DOMAIN = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_VAR_DOMAIN"));
+  TYPE_CODE_ARRAY = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_ARRAY"));
+  TYPE_CODE_BOOL = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_BOOL"));
+  TYPE_CODE_ENUM = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_ENUM"));
+  TYPE_CODE_FLT = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_FLT"));
+  TYPE_CODE_FUNC = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_FUNC"));
+  TYPE_CODE_INT = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_INT"));
+  TYPE_CODE_PTR = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_PTR"));
+  TYPE_CODE_REF = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_REF"));
+  TYPE_CODE_STRUCT = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_STRUCT"));
+  TYPE_CODE_TYPEDEF = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_TYPEDEF"));
+  TYPE_CODE_UNION = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_UNION"));
+  TYPE_CODE_VOID = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_VOID"));
+  LOC_TYPEDEF = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_LOC_TYPEDEF"));
+  LOC_STATIC = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_LOC_STATIC"));
+  LOC_BLOCK = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_LOC_BLOCK"));
+  LOC_CONST = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_LOC_CONST"));
+  builtin_type_double = to_type(PyObject_CallFunction(find_type, "s", "double"));
+  builtin_type_float = to_type(PyObject_CallFunction(find_type, "s", "float"));
+  builtin_type_int = to_type(PyObject_CallFunction(find_type, "s", "int"));
+  builtin_type_long = to_type(PyObject_CallFunction(find_type, "s", "long"));
+  builtin_type_long_long = to_type(PyObject_CallFunction(find_type, "s", "long long"));
+  builtin_type_unsigned_int = to_type(PyObject_CallFunction(find_type, "s", "unsigned int"));
+  builtin_type_unsigned_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long"));
+  builtin_type_unsigned_long_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long long"));
+  builtin_type_void = to_type(PyObject_CallFunction(find_type, "s", "void"));
+}
 
-static enum lval_kind VALUE_LVAL(struct value *gv)
-{ return 0; }
+/************ apis ******************/
 
-static CORE_ADDR VALUE_ADDRESS(struct value *gv)
-{ return 0; }
+static int vprintf_filtered(const char *format, va_list ap) {
+  return vprintf(format, ap);
+}
 
-static void *value_contents_raw(struct value *gv)
-{ return 0; }
+/* unused */
+static int add_com(const char *com, int i, void (*callback)(char *, int), const char *descr) { return 0; }
+static int add_com_alias(const char *alias, const char *com, int i, int j) { return 0; }
 
-static struct value *value_from_longest(struct type *type, long long val)
-{ return 0; }
+/* to = gdb.selected_inferior().read_memory(from, n) */
+static int target_read_memory(CORE_ADDR from, void *to, size_t n) {
+  PyObject *inf, *mem;
+  const void *buf;
+  size_t buflen;
 
-static struct value *value_from_double(struct type *type, double val)
-{ return 0; }
+  if (!(inf = PyObject_CallObject(selected_inferior, NULL))) goto err;
+  if (!(mem = PyObject_CallMethod(inf, "read_memory", "Kn", from, n))) goto err;
+  if (PyObject_AsReadBuffer(mem, &buf, &buflen)) goto err;
+  if (PyErr_Occurred() || buflen != n) goto err;
+  memcpy(to, buf, n);
+  return 0;
+err: PyErr_Clear();
+  return 1;
+}
 
-static struct type *lookup_pointer_type(struct type *type)
-{ return 0; }
+/* gdb.selected_inferior().write_memory(to, buf) */
+static int target_write_memory(CORE_ADDR to, void *from, size_t n) {
+  PyObject *inf;
+  if (!(inf = PyObject_CallObject(selected_inferior, NULL))) return 1;
+  PyObject_CallMethod(inf, "write_memory", "Ks#", to, from, n);
+  return 0;
+}
 
-static int target_read_memory(CORE_ADDR from, void *to, size_t n)
-{ return 0; }
+/*********** frames *****************/
 
-static int target_write_memory(CORE_ADDR to, void *from, size_t n)
-{ return 0; }
+/* return gdb.selected_frame() */
+static struct frame_info *get_selected_frame(const char *s) {
+  return to_frame_info(PyObject_CallObject(selected_frame, NULL));
+}
 
-static struct type *value_type(struct value *gv)
-{ return 0; }
+/* return gdb.newest_frame() */
+static struct frame_info *get_current_frame(void) {
+  return to_frame_info(PyObject_CallObject(newest_frame, NULL));
+}
 
-static struct value *call_function_by_hand(struct value *func, int n_params,
-                                           struct value *params[])
-{ return 0; }
+/* return frame.older() */
+static struct frame_info *get_prev_frame(struct frame_info *frame) {
+  return to_frame_info(PyObject_CallMethod(&frame->py, "older", NULL));
+}
 
-static struct type *lookup_function_type(struct type *type)
-{ return 0; }
+/* return frame.newer() */
+static struct frame_info *get_next_frame(struct frame_info *frame) {
+  return to_frame_info(PyObject_CallMethod(&frame->py, "newer", NULL));
+}
 
-static struct type *TYPE_TARGET_TYPE(struct type *type)
-{ return 0; }
+/*********** blocks *****************/
 
-static int TYPE_LENGTH(struct type *type)
-{ return 0; }
+/* return frame.block() */
+static struct block *get_frame_block(struct frame_info *frame, int always_0) {
+  return to_block(PyObject_CallMethod(&frame->py, "block", NULL));
+}
 
-static int TYPE_NFIELDS(struct type *type)
-{ return 0; }
+/* return gdb.selected_frame().block() */
+static struct block *get_selected_block(int always_0) {
+  return get_frame_block(get_selected_frame(""), always_0);
+}
 
-static int TYPE_CODE(struct type *type)
-{ return 0; }
+/*********** symbols ****************/
 
-static const char *TYPE_NAME(struct type *type)
-{ return 0; }
-
-static const char *TYPE_FIELD_NAME(struct type *type, int i)
-{ return 0; }
-
-static int TYPE_FIELD_BITPOS(struct type *type, int i)
-{ return 0; }
-
-static int TYPE_FIELD_BITSIZE(struct type *type, int i)
-{ return 0; }
-
-static struct type *TYPE_FIELD_TYPE(struct type *type, int i)
-{ return 0; }
-
-static struct type *check_typedef(struct type *type)
-{ return 0; }
-
-static struct frame_info *get_prev_frame(struct frame_info *frame)
-{ return 0; }
-
-static struct frame_info *get_next_frame(struct frame_info *frame)
-{ return 0; }
-
-static struct frame_info *get_current_frame(void)
-{ return 0; }
-
-static struct frame_info *get_selected_frame(const char *s)
-{ return 0; }
-
-static struct block *get_selected_block(int n)
-{ return 0; }
-
-static struct block *get_frame_block(struct frame_info *frame, int n)
-{ return 0; }
+static struct minimal_symbol *lookup_minimal_symbol(const char *name, void *i, int j) {
+  return 0; /* no support for symbols without debug info */
+}
 
 static struct symbol *lookup_symbol(const char *name, struct block *block,
-                                    enum domain domain, int i, int j)
-{ return 0; }
+                                    int domain, int i, int j) {
+  PyObject *tuple;
+  tuple = PyObject_CallFunction(find_symbol, "sOi", name, &block->py, domain);
+  if (!PyErr_Occurred())
+    return to_symbol(PyObject_CallMethod(tuple, "__getitem__", "i", 0));
+  PyErr_Clear();
+  return to_symbol(PyObject_CallFunction(find_global_symbol, "si", name, domain));
+}
 
-static struct minimal_symbol *lookup_minimal_symbol(const char *name, void *i, int j)
-{ return 0; }
+static int SYMBOL_CLASS(struct symbol *sym) {
+  return PyInt_AsLong(PyObject_GetAttrString(&sym->py, "addr_class"));
+}
 
-static enum class_kind SYMBOL_CLASS(struct symbol*sym)
-{ return 0; }
+static struct type *SYMBOL_TYPE(struct symbol *sym) {
+  return to_type(PyObject_GetAttrString(&sym->py, "type"));
+}
 
-static struct value *read_var_value(struct symbol *sym, struct frame_info *frame)
-{ return 0; }
+static struct symbol *get_frame_function(struct frame_info *frame) {
+  return to_symbol(PyObject_CallMethod(&frame->py, "function", NULL));
+}
 
+static struct value *read_var_value(struct symbol *sym, struct frame_info *frame) {
+  if (frame)
+    return to_value(PyObject_CallMethod(&sym->py, "value", "O", &frame->py));
+  else
+    return to_value(PyObject_CallMethod(&sym->py, "value", NULL));
+}
 
-static struct symbol *get_frame_function(struct frame_info *frame)
-{ return 0; }
+/*********** types  *****************/
 
-static struct type *SYMBOL_TYPE(struct symbol *sym)
-{ return 0; }
+static struct type *lookup_pointer_type(struct type *type) {
+  return to_type(PyObject_CallMethod(&type->py, "pointer", NULL));
+}
 
+static struct type *lookup_function_type(struct type *type) {
+  return NULL; /* only used with lookup_minimal_symbol(), so unsupported */
+}
 
+static struct type *TYPE_TARGET_TYPE(struct type *type) {
+  return to_type(PyObject_CallMethod(&type->py, "target", NULL));
+}
+
+static struct type *check_typedef(struct type *type) {
+  return to_type(PyObject_CallMethod(&type->py, "strip_typedefs", NULL));
+}
+
+static int TYPE_LENGTH(struct type *type) {
+  return PyLong_AsLong(PyObject_GetAttrString(&type->py, "sizeof"));
+}
+
+static int TYPE_CODE(struct type *type) {
+  return PyInt_AsLong(PyObject_GetAttrString(&type->py, "code"));
+}
+
+static const char *TYPE_NAME(struct type *type) {
+  return PyString_AsString(PyObject_GetAttrString(&type->py, "name"));
+}
+
+static PyObject *get_fields(struct type *type) {
+  return PyObject_CallMethod(&type->py, "fields", NULL);
+}
+
+static PyObject *get_field(struct type *type, int i) {
+  return PyObject_CallMethod(get_fields(type), "__getitem__", "i", i);
+}
+
+static int TYPE_NFIELDS(struct type *type) {
+  return PyInt_AsLong(PyObject_CallMethod(get_fields(type), "__len__", NULL));
+}
+
+static const char *TYPE_FIELD_NAME(struct type *type, int i) {
+  return PyString_AsString(PyObject_GetAttrString(get_field(type, i), "name"));
+}
+
+static int TYPE_FIELD_BITPOS(struct type *type, int i) {
+  return PyInt_AsLong(PyObject_GetAttrString(get_field(type, i), "bitpos"));
+}
+
+static int TYPE_FIELD_BITSIZE(struct type *type, int i) {
+  return PyInt_AsLong(PyObject_GetAttrString(get_field(type, i), "bitsize"));
+}
+
+static struct type *TYPE_FIELD_TYPE(struct type *type, int i) {
+  return to_type(PyObject_GetAttrString(get_field(type, i), "type"));
+}
+
+/*********** values *****************/
+
+static CORE_ADDR VALUE_ADDRESS(struct value *gv) {
+  PyObject *ptr = PyObject_GetAttrString(&gv->py, "address");
+  return PyLong_AsUnsignedLongLong(PyObject_CallMethod(ptr, "__long__", NULL));
+}
+
+static enum lval_kind VALUE_LVAL(struct value *gv) {
+  return VALUE_ADDRESS(gv) == (CORE_ADDR)-1 ? not_lval : lval_memory;
+}
+
+static struct value *value_from_longest(struct type *type, long long val) {
+  /* XXX detect whether type is unsigned and use K instead of L */
+  PyObject *value = PyObject_CallFunction(make_value, "L", val);
+  return to_value(PyObject_CallMethod(value, "cast", "O", &type->py));
+}
+
+static struct value *value_from_double(struct type *type, double val) {
+  PyObject *value = PyObject_CallFunction(make_value, "d", val);
+  return to_value(PyObject_CallMethod(value, "cast", "O", &type->py));
+}
+
+static struct value *call_function_by_hand(struct value *func, int n_params,
+                                           struct value *params[]) {
+  PyObject *tuple = Py_BuildValue("()");
+  for (int i = 0; i < n_params; i++)
+    tuple = PyObject_CallMethod(tuple, "__add__", "(O)", &(params[i]->py));
+  return to_value(PyObject_CallObject(&func->py, tuple));
+}
+
+static struct type *value_type(struct value *gv) {
+  return to_type(PyObject_GetAttrString(&gv->py, "type"));
+}
+
+static void *value_contents_raw(struct value *gv) {
+  static union {
+    char i1; short i2; int i4; long long i8;
+    float f; double d;
+  } v;
+  struct type *type = value_type(gv);
+  int code = TYPE_CODE(type), size = TYPE_LENGTH(type);
+
+  if (code == TYPE_CODE_BOOL || code == TYPE_CODE_INT ||
+      code == TYPE_CODE_PTR || code == TYPE_CODE_ENUM) {
+    switch (size) {
+    case 1:
+      v.i1 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      return &v;
+    case 2:
+      v.i2 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      return &v;
+    case 4:
+      v.i4 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      return &v;
+    case 8:
+      v.i8 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      return &v;
+    }
+  }
+  else if (code == TYPE_CODE_FLT) {
+    switch (size) {
+    case 4:
+      v.f = PyFloat_AsDouble(PyObject_CallMethod(&gv->py, "__float__", NULL));
+      return &v;
+    case 8:
+      v.d = PyFloat_AsDouble(PyObject_CallMethod(&gv->py, "__float__", NULL));
+      return &v;
+    }
+  }
+  return 0;
+}
