@@ -79,25 +79,13 @@
  *
  */
 
+#include "python-gw.ic"
 
 #include <stddef.h>   /* used for ptrdiff_t and size_t */
 #include <stdio.h>
 #include <string.h>
 #include <time.h>     /* for time/ctime stamping of duel.out */
 #include <assert.h>
-
-#include "defs.h"
-#include "symtab.h"
-#include "gdbtypes.h"
-#include "gdbcore.h"
-#include "frame.h"
-#include "target.h"
-#include "value.h"
-#include "symfile.h"
-#include "objfiles.h"
-#include "gdbcmd.h"
-#include "call-cmds.h"
-#include "infcall.h"
 
 #include "duel/global.h"
 #include "duel/proto.h"

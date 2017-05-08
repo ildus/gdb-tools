@@ -1,0 +1,159 @@
+#include <stdlib.h>
+
+#define QUIT do { } while(0)
+#define BITS_BIG_ENDIAN 0
+#define class_vars 0
+
+typedef unsigned long long CORE_ADDR;
+typedef long long LONGEST;
+
+struct value;
+struct type;
+struct frame_info;
+struct block;
+struct symbol;
+struct minimal_symbol
+{
+  CORE_ADDR address;
+  enum { mst_data, mst_bss, mst_text } type;
+};
+
+enum class_kind { LOC_TYPEDEF, LOC_STATIC, LOC_BLOCK, LOC_CONST };
+
+enum domain { VAR_DOMAIN, STRUCT_DOMAIN };
+
+enum lval_kind { lval_memory, not_lval, lval_register };
+
+enum type_code { TYPE_CODE_UNDEF, TYPE_CODE_BOOL, TYPE_CODE_INT, TYPE_CODE_FLT,
+  TYPE_CODE_VOID, TYPE_CODE_PTR, TYPE_CODE_REF, TYPE_CODE_FUNC,
+  TYPE_CODE_ARRAY, TYPE_CODE_STRUCT, TYPE_CODE_UNION, TYPE_CODE_ENUM,
+  TYPE_CODE_TYPEDEF };
+
+static struct type *builtin_type_int, *builtin_type_unsigned_int,
+                   *builtin_type_long, *builtin_type_unsigned_long,
+                   *builtin_type_long_long, *builtin_type_unsigned_long_long,
+                   *builtin_type_float, *builtin_type_double,
+                   *builtin_type_void;
+
+static int immediate_quit= 0;
+
+static int vprintf_filtered(const char *format, va_list ap)
+{ return 0; }
+
+// MEMROOT-like to free all at once
+static void *xmalloc(size_t size) {
+  return malloc(size);
+}
+
+static int make_cleanup(void (*callback)(void*), int i)
+{ return 0; }
+
+static int add_com(const char *com, int i, void (*callback)(char *, int), const char *descr)
+{ return 0; }
+
+static int add_com_alias(const char *alias, const char *com, int i, int j)
+{ return 0; }
+
+static enum lval_kind VALUE_LVAL(struct value *gv)
+{ return 0; }
+
+static CORE_ADDR VALUE_ADDRESS(struct value *gv)
+{ return 0; }
+
+static void *value_contents_raw(struct value *gv)
+{ return 0; }
+
+static struct value *value_from_longest(struct type *type, long long val)
+{ return 0; }
+
+static struct value *value_from_double(struct type *type, double val)
+{ return 0; }
+
+static struct type *lookup_pointer_type(struct type *type)
+{ return 0; }
+
+static int target_read_memory(CORE_ADDR from, void *to, size_t n)
+{ return 0; }
+
+static int target_write_memory(CORE_ADDR to, void *from, size_t n)
+{ return 0; }
+
+static struct type *value_type(struct value *gv)
+{ return 0; }
+
+static struct value *call_function_by_hand(struct value *func, int n_params,
+                                           struct value *params[])
+{ return 0; }
+
+static struct type *lookup_function_type(struct type *type)
+{ return 0; }
+
+static struct type *TYPE_TARGET_TYPE(struct type *type)
+{ return 0; }
+
+static int TYPE_LENGTH(struct type *type)
+{ return 0; }
+
+static int TYPE_NFIELDS(struct type *type)
+{ return 0; }
+
+static int TYPE_CODE(struct type *type)
+{ return 0; }
+
+static const char *TYPE_NAME(struct type *type)
+{ return 0; }
+
+static const char *TYPE_FIELD_NAME(struct type *type, int i)
+{ return 0; }
+
+static int TYPE_FIELD_BITPOS(struct type *type, int i)
+{ return 0; }
+
+static int TYPE_FIELD_BITSIZE(struct type *type, int i)
+{ return 0; }
+
+static struct type *TYPE_FIELD_TYPE(struct type *type, int i)
+{ return 0; }
+
+static struct type *check_typedef(struct type *type)
+{ return 0; }
+
+static struct frame_info *get_prev_frame(struct frame_info *frame)
+{ return 0; }
+
+static struct frame_info *get_next_frame(struct frame_info *frame)
+{ return 0; }
+
+static struct frame_info *get_current_frame(void)
+{ return 0; }
+
+static struct frame_info *get_selected_frame(const char *s)
+{ return 0; }
+
+static struct block *get_selected_block(int n)
+{ return 0; }
+
+static struct block *get_frame_block(struct frame_info *frame, int n)
+{ return 0; }
+
+static struct symbol *lookup_symbol(const char *name, struct block *block,
+                                    enum domain domain, int i, int j)
+{ return 0; }
+
+static struct minimal_symbol *lookup_minimal_symbol(const char *name, void *i, int j)
+{ return 0; }
+
+static enum class_kind SYMBOL_CLASS(struct symbol*sym)
+{ return 0; }
+
+static struct value *read_var_value(struct symbol *sym, struct frame_info *frame)
+{ return 0; }
+
+
+static struct symbol *get_frame_function(struct frame_info *frame)
+{ return 0; }
+
+static struct type *SYMBOL_TYPE(struct symbol *sym)
+{ return 0; }
+
+
