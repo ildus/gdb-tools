@@ -2,6 +2,12 @@
 
 /* XXX don't leak PyObjects */
 
+/* duel debugging helper */
+static const char *as_str(PyObject *o)
+{
+  return PyString_AsString(PyObject_CallMethod(o, "__str__", NULL));
+}
+
 /******* memory handling ************/
 
 static void *xmalloc(size_t size) {
@@ -63,16 +69,32 @@ static int immediate_quit = 0;
 
 static PyObject *gdb;
 static PyObject *find_symbol, *find_global_symbol, *find_type, *print;
-static PyObject *selected_inferior, *selected_frame, *newest_frame, *make_value;
+static PyObject *selected_inferior, *selected_frame, *newest_frame, *value_class;
 static int STRUCT_DOMAIN, VAR_DOMAIN;
 static int TYPE_CODE_BOOL, TYPE_CODE_INT, TYPE_CODE_FLT, TYPE_CODE_VOID,
            TYPE_CODE_PTR, TYPE_CODE_REF, TYPE_CODE_FUNC, TYPE_CODE_ARRAY,
            TYPE_CODE_STRUCT, TYPE_CODE_UNION, TYPE_CODE_ENUM, TYPE_CODE_TYPEDEF;
 static int LOC_TYPEDEF, LOC_STATIC, LOC_BLOCK, LOC_CONST;
 
+/* types depends on the target architecture, cannot be retrieved in advance */
+static void init_builtin_types()
+{
+  builtin_type_double = to_type(PyObject_CallFunction(find_type, "s", "double"));
+  builtin_type_float = to_type(PyObject_CallFunction(find_type, "s", "float"));
+  builtin_type_int = to_type(PyObject_CallFunction(find_type, "s", "int"));
+  builtin_type_long = to_type(PyObject_CallFunction(find_type, "s", "long"));
+  builtin_type_long_long = to_type(PyObject_CallFunction(find_type, "s", "long long"));
+  builtin_type_unsigned_int = to_type(PyObject_CallFunction(find_type, "s", "unsigned int"));
+  builtin_type_unsigned_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long"));
+  builtin_type_unsigned_long_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long long"));
+  builtin_type_void = to_type(PyObject_CallFunction(find_type, "s", "void"));
+  builtin_type_func = TYPE_TARGET_TYPE(value_type(to_value(PyObject_CallFunction(parse_and_eval, "s", "(int(*)())0"))));
+}
+
 static PyObject *do_duel(PyObject *self, PyObject *args) {
   char *expr;
   if (!PyArg_ParseTuple(args, "s", &expr)) Py_RETURN_NONE;
+  init_builtin_types();
   duel_command(expr, 1);
   if (cleanup_callback) cleanup_callback(0);
   Py_RETURN_NONE;
@@ -95,7 +117,7 @@ PyMODINIT_FUNC initduelpy(void) {
   selected_inferior = PyObject_GetAttrString(gdb, "selected_inferior");
   selected_frame = PyObject_GetAttrString(gdb, "selected_frame");
   newest_frame = PyObject_GetAttrString(gdb, "newest_frame");
-  make_value = PyObject_GetAttrString(PyObject_GetAttrString(gdb, "Value"), "__init__");
+  value_class = PyObject_GetAttrString(gdb, "Value");
   STRUCT_DOMAIN = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_STRUCT_DOMAIN"));
   VAR_DOMAIN = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_VAR_DOMAIN"));
   TYPE_CODE_ARRAY = PyInt_AsLong(PyObject_GetAttrString(gdb, "TYPE_CODE_ARRAY"));
@@ -114,15 +136,6 @@ PyMODINIT_FUNC initduelpy(void) {
   LOC_STATIC = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_LOC_STATIC"));
   LOC_BLOCK = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_LOC_BLOCK"));
   LOC_CONST = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_LOC_CONST"));
-  builtin_type_double = to_type(PyObject_CallFunction(find_type, "s", "double"));
-  builtin_type_float = to_type(PyObject_CallFunction(find_type, "s", "float"));
-  builtin_type_int = to_type(PyObject_CallFunction(find_type, "s", "int"));
-  builtin_type_long = to_type(PyObject_CallFunction(find_type, "s", "long"));
-  builtin_type_long_long = to_type(PyObject_CallFunction(find_type, "s", "long long"));
-  builtin_type_unsigned_int = to_type(PyObject_CallFunction(find_type, "s", "unsigned int"));
-  builtin_type_unsigned_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long"));
-  builtin_type_unsigned_long_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long long"));
-  builtin_type_void = to_type(PyObject_CallFunction(find_type, "s", "void"));
 }
 
 /************ apis ******************/
@@ -298,7 +311,10 @@ static struct type *TYPE_FIELD_TYPE(struct type *type, int i) {
 
 static CORE_ADDR VALUE_ADDRESS(struct value *gv) {
   PyObject *ptr = PyObject_GetAttrString(&gv->py, "address");
-  return PyLong_AsUnsignedLongLong(PyObject_CallMethod(ptr, "__long__", NULL));
+  CORE_ADDR res = PyLong_AsUnsignedLongLong(PyObject_CallMethod(ptr, "__long__", NULL));
+  if (!PyErr_Occurred()) return res;
+  PyErr_Clear();
+  return (CORE_ADDR)-1;
 }
 
 static enum lval_kind VALUE_LVAL(struct value *gv) {
@@ -307,21 +323,24 @@ static enum lval_kind VALUE_LVAL(struct value *gv) {
 
 static struct value *value_from_longest(struct type *type, long long val) {
   /* XXX detect whether type is unsigned and use K instead of L */
-  PyObject *value = PyObject_CallFunction(make_value, "L", val);
+  PyObject *value = PyObject_CallFunction(value_class, "L", val);
   return to_value(PyObject_CallMethod(value, "cast", "O", &type->py));
 }
 
 static struct value *value_from_double(struct type *type, double val) {
-  PyObject *value = PyObject_CallFunction(make_value, "d", val);
+  PyObject *value = PyObject_CallFunction(value_class, "d", val);
   return to_value(PyObject_CallMethod(value, "cast", "O", &type->py));
 }
 
+/* func is a _pointer to function_, needs to be dereferenced first */
 static struct value *call_function_by_hand(struct value *func, int n_params,
                                            struct value *params[]) {
   PyObject *tuple = Py_BuildValue("()");
   for (int i = 0; i < n_params; i++)
-    tuple = PyObject_CallMethod(tuple, "__add__", "(O)", &(params[i]->py));
-  return to_value(PyObject_CallObject(&func->py, tuple));
+    tuple = PyObject_CallMethod(tuple, "__add__", "((O))", &(params[i]->py));
+  func = to_value(PyObject_CallMethod(&func->py, "dereference", NULL));
+  PyObject *val=PyObject_CallObject(&func->py, tuple);
+  return to_value(val);
 }
 
 static struct type *value_type(struct value *gv) {
@@ -340,16 +359,16 @@ static void *value_contents_raw(struct value *gv) {
       code == TYPE_CODE_PTR || code == TYPE_CODE_ENUM) {
     switch (size) {
     case 1:
-      v.i1 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      v.i1 = PyLong_AsLongLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
       return &v;
     case 2:
-      v.i2 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      v.i2 = PyLong_AsLongLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
       return &v;
     case 4:
-      v.i4 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      v.i4 = PyLong_AsLongLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
       return &v;
     case 8:
-      v.i8 = PyInt_AsLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
+      v.i8 = PyLong_AsLongLong(PyObject_CallMethod(&gv->py, "__long__", NULL));
       return &v;
     }
   }
