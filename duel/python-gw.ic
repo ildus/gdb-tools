@@ -61,13 +61,20 @@ static struct type *builtin_type_int, *builtin_type_unsigned_int,
                    *builtin_type_long, *builtin_type_unsigned_long,
                    *builtin_type_long_long, *builtin_type_unsigned_long_long,
                    *builtin_type_float, *builtin_type_double,
-                   *builtin_type_void;
+                   *builtin_type_void, *builtin_type_funcptr,
+                   *builtin_type_func;
 
 static int immediate_quit = 0;
 
 /******** python stuff **************/
 
-static PyObject *gdb;
+static struct type *value_type(struct value *gv);
+static struct type *TYPE_TARGET_TYPE(struct type *type);
+static struct value *value_from_longest(struct type *type, long long val);
+static struct value *call_function_by_hand(struct value *func, int n_params,
+                                           struct value *params[]);
+
+static PyObject *gdb, *parse_and_eval;
 static PyObject *find_symbol, *find_global_symbol, *find_type, *print;
 static PyObject *selected_inferior, *selected_frame, *newest_frame, *value_class;
 static int STRUCT_DOMAIN, VAR_DOMAIN;
@@ -88,7 +95,8 @@ static void init_builtin_types()
   builtin_type_unsigned_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long"));
   builtin_type_unsigned_long_long = to_type(PyObject_CallFunction(find_type, "s", "unsigned long long"));
   builtin_type_void = to_type(PyObject_CallFunction(find_type, "s", "void"));
-  builtin_type_func = TYPE_TARGET_TYPE(value_type(to_value(PyObject_CallFunction(parse_and_eval, "s", "(int(*)())0"))));
+  builtin_type_funcptr = value_type(to_value(PyObject_CallFunction(parse_and_eval, "s", "(long long(*)())0")));
+  builtin_type_func = TYPE_TARGET_TYPE(builtin_type_funcptr);
 }
 
 static PyObject *do_duel(PyObject *self, PyObject *args) {
@@ -117,6 +125,7 @@ PyMODINIT_FUNC initduelpy(void) {
   selected_inferior = PyObject_GetAttrString(gdb, "selected_inferior");
   selected_frame = PyObject_GetAttrString(gdb, "selected_frame");
   newest_frame = PyObject_GetAttrString(gdb, "newest_frame");
+  parse_and_eval = PyObject_GetAttrString(gdb, "parse_and_eval");
   value_class = PyObject_GetAttrString(gdb, "Value");
   STRUCT_DOMAIN = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_STRUCT_DOMAIN"));
   VAR_DOMAIN = PyInt_AsLong(PyObject_GetAttrString(gdb, "SYMBOL_VAR_DOMAIN"));
@@ -216,10 +225,6 @@ static struct block *get_selected_block(int always_0) {
 
 /*********** symbols ****************/
 
-static struct minimal_symbol *lookup_minimal_symbol(const char *name, void *i, int j) {
-  return 0; /* no support for symbols without debug info */
-}
-
 static struct symbol *lookup_symbol(const char *name, struct block *block,
                                     int domain, int i, int j) {
   PyObject *tuple;
@@ -249,14 +254,32 @@ static struct value *read_var_value(struct symbol *sym, struct frame_info *frame
     return to_value(PyObject_CallMethod(&sym->py, "value", NULL));
 }
 
+/* this is used for looking up functions in libc, like malloc(), etc. */
+static struct minimal_symbol *lookup_minimal_symbol(const char *name, void *i, int j) {
+  static struct minimal_symbol msym = { 0, mst_text };
+  const char *str;
+  int res;
+  struct value *v = to_value(PyObject_CallFunction(parse_and_eval, "s", name));
+  if (!v) return 0;
+  str = PyString_AsString(PyObject_CallMethod(&v->py, "__str__", NULL));
+  if (!str || PyErr_Occurred()) { PyErr_Clear(); return 0; }
+  if (sscanf(str, "{<text variable, no debug info>} %llx <", &msym.address))
+    return &msym;
+  if (sscanf(str, "{<text gnu-indirect-function variable, no debug info>} %llx <", &msym.address)) {
+    struct value *proxy = value_from_longest(builtin_type_funcptr, msym.address);
+    struct value *func = call_function_by_hand(proxy, 0, 0);
+    msym.address = PyLong_AsUnsignedLongLong(PyObject_CallMethod(&func->py, "__long__", NULL));
+    if (!PyErr_Occurred()) return &msym;
+    PyErr_Clear();
+    return 0;
+  }
+  return 0;
+}
+
 /*********** types  *****************/
 
 static struct type *lookup_pointer_type(struct type *type) {
   return to_type(PyObject_CallMethod(&type->py, "pointer", NULL));
-}
-
-static struct type *lookup_function_type(struct type *type) {
-  return NULL; /* only used with lookup_minimal_symbol(), so unsupported */
 }
 
 static struct type *TYPE_TARGET_TYPE(struct type *type) {
@@ -305,6 +328,10 @@ static int TYPE_FIELD_BITSIZE(struct type *type, int i) {
 
 static struct type *TYPE_FIELD_TYPE(struct type *type, int i) {
   return to_type(PyObject_GetAttrString(get_field(type, i), "type"));
+}
+
+static struct type *lookup_function_type(struct type *type) {
+  return builtin_type_func;
 }
 
 /*********** values *****************/
