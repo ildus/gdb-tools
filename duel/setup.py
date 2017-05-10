@@ -10,7 +10,8 @@ class BuildDuelpy(build_ext):
     build_ext.run(self)
 
 duel = Extension('duelpy',
-                 #extra_compile_args = ['-ggdb3','-O0'],
+                 extra_compile_args = ['-Wall', #'-ggdb3','-O0',
+                                      ],
                  sources = ['duelgdb.c', 'duel/duel.c', 'duel/types.c',
                      'duel/eval.c', 'duel/misc.c', 'duel/y.tab.c',
                      'duel/error.c', 'duel/evalops.c', 'duel/print.c'])

@@ -227,8 +227,8 @@ DEF tctype *ctype_int,  *ctype_uint, *ctype_short, *ctype_ushort,
                      (t)->type_kind<=CTK_DOUBLE) || (t)->type_kind==CTK_ENUM)
 
 /* tell if type is integral */
-#define ctype_kind_integral(t) ((t)->type_kind>=CTK_CHAR && \
-                     (t)->type_kind<=CTK_ULONG || (t)->type_kind==CTK_ENUM)
+#define ctype_kind_integral(t) (((t)->type_kind>=CTK_CHAR && \
+                     (t)->type_kind<=CTK_ULONG) || (t)->type_kind==CTK_ENUM)
 
 /* tell if type fits into fixed memory size (void not included) */
 #define ctype_kind_scalar(t) (ctype_kind_numeric(t) || ctype_kind_ptr_like(t))
@@ -240,7 +240,7 @@ DEF tctype *ctype_int,  *ctype_uint, *ctype_short, *ctype_ushort,
 
 /* tell if a type is a function pointer or like a func ptr (ie a func!) */
 #define ctype_kind_func_ptr_like(t) ((t)->type_kind==CTK_FUNC || \
-                    (t)->type_kind==CTK_PTR && t->u.kid->type_kind==CTK_FUNC)
+                    ((t)->type_kind==CTK_PTR && t->u.kid->type_kind==CTK_FUNC))
 
 
 /***** VALUES
@@ -426,7 +426,7 @@ typedef struct snode {          /* a single node on an expression tree     */
                                 /* NK_OP node info: op_kind,op,kids        */
    int src_pos ;           /* starting source code location (op etc)  */
    top_kind op_kind ;           /* opcode type (unary,bin etc)   */
-   topcode op ;                 /* actual opcode: '-' for both unary&bin '-'*/
+   int op ;                     /* actual opcode: '-' for both unary&bin '-'*/
    struct snode *kids[NODE_MAX_KIDS] ;   /* pointers to node's kids     */
    tvalue cnst ;                /* NK_CONST info - constant value       */
    char *name ;                 /* NK_NAME  info - variable name        */

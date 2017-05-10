@@ -3,6 +3,7 @@
 /* XXX don't leak PyObjects */
 
 /* duel debugging helper */
+static const char *as_str(PyObject *o) __attribute__((unused));
 static const char *as_str(PyObject *o)
 {
   return PyString_AsString(PyObject_CallMethod(o, "__str__", NULL));
@@ -169,7 +170,7 @@ static int add_com_alias(const char *alias, const char *com, int i, int j) { ret
 static int target_read_memory(CORE_ADDR from, void *to, size_t n) {
   PyObject *inf, *mem;
   const void *buf;
-  size_t buflen;
+  Py_ssize_t buflen;
 
   if (!(inf = PyObject_CallObject(selected_inferior, NULL))) goto err;
   if (!(mem = PyObject_CallMethod(inf, "read_memory", "Kn", from, n))) goto err;
@@ -258,7 +259,6 @@ static struct value *read_var_value(struct symbol *sym, struct frame_info *frame
 static struct minimal_symbol *lookup_minimal_symbol(const char *name, void *i, int j) {
   static struct minimal_symbol msym = { 0, mst_text };
   const char *str;
-  int res;
   struct value *v = to_value(PyObject_CallFunction(parse_and_eval, "s", name));
   if (!v) return 0;
   str = PyString_AsString(PyObject_CallMethod(&v->py, "__str__", NULL));
@@ -362,8 +362,9 @@ static struct value *value_from_double(struct type *type, double val) {
 /* func is a _pointer to function_, needs to be dereferenced first */
 static struct value *call_function_by_hand(struct value *func, int n_params,
                                            struct value *params[]) {
+  int i;
   PyObject *tuple = Py_BuildValue("()");
-  for (int i = 0; i < n_params; i++)
+  for (i = 0; i < n_params; i++)
     tuple = PyObject_CallMethod(tuple, "__add__", "((O))", &(params[i]->py));
   func = to_value(PyObject_CallMethod(&func->py, "dereference", NULL));
   PyObject *val=PyObject_CallObject(&func->py, tuple);

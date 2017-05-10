@@ -2897,7 +2897,7 @@ LFUNC tnode* duel_lex_int(void)    /* parse next token as integer num */
       if(isdigit(*p)) base=8 ; /* avoid having '0' as a base 8 (uint) */
    }
 
-   while(isdigit(*p) || base==16 && isxdigit(*p)) {  /* get the value */
+   while(isdigit(*p) || (base==16 && isxdigit(*p))) {  /* get the value */
       val*=base ;
       if(isupper(*p)) val+= *p-'A'+10 ;
       else if(islower(*p)) val+= *p-'a'+10 ;
@@ -2985,7 +2985,7 @@ LFUNC char parse_escaped_char(void)
 {
   char retc ;
   switch(lexptr[0]) {
-   /*case 'a': retc='\a' ; break ;	/* some compilers don't support it. */
+   case 'a': retc='\a' ; break ;
    case 'b': retc='\b' ; break ;
    case 'f': retc='\f' ; break ;
    case 'n': retc='\n' ; break ;
@@ -3051,7 +3051,7 @@ LFUNC int yylex (void)
     case '1': case '2': case '3':      /* decimal or floating point number */
     case '4': case '5': case '6': case '7': case '8': case '9':
           for(p=lexptr ; *p>='0' && *p<='9' ; p++ ) ;  /*find next non digit*/
-          if(*p=='.' && p[1]!='.' || *p=='e' || *p=='E')
+          if((*p=='.' && p[1]!='.') || *p=='e' || *p=='E')
                yylval.node=duel_lex_float();
           else yylval.node=duel_lex_int();
           return T_CONST ;

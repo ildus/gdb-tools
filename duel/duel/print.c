@@ -143,7 +143,6 @@ char *neat_char(char c,char quote)
 
 PROC duel_sprint_scalar_value(char *s,tvalue *v)
 {
-   bool ok ;
    tvalue rval ;  /* copy of v, but as an rval */
    rval = *v ;
    if(v->val_kind==VK_FVALUE) {
@@ -169,10 +168,11 @@ PROC duel_sprint_scalar_value(char *s,tvalue *v)
                 sprintf(s,"array @%p%s",v->u.lvalue,m);
                 return;
              }
+          default: duel_assert(0);
         }
 	/* convert scalar type to rvalue */
         if(!duel_try_get_rvalue(&rval,"")) {
-           sprintf(s,"ref @%p [ILLEGAL]",v->u.lvalue,m);
+           sprintf(s,"ref @%p [ILLEGAL]",v->u.lvalue);
            return ;
         }
    }
@@ -205,7 +205,7 @@ PROC duel_sprint_scalar_value(char *s,tvalue *v)
 		        else sprintf(s,"0x%llxULL", rval.u.rval_ulonglong) ; break ;
       case CTK_FLOAT:   rval.u.rval_double=rval.u.rval_float ;
       case CTK_DOUBLE:  { double x=rval.u.rval_double ;
-			  if(x >= -1e-6 && x <= 1e-6 || x >= 1e8 || x <= -1e8)
+			  if((x >= -1e-6 && x <= 1e-6) || x >= 1e8 || x <= -1e8)
 	                     sprintf(s,"%.4le",x);	/* standard 'e' fmt */
                           else {	/* fixed point removing trailing '0'*/
 			     int l;
@@ -289,6 +289,7 @@ PROC duel_print_value(tvalue *v)
 	     duel_printf(" }\n");
         return ;
         case CTK_ARRAY: ;  /* not handled except for char[] as scalar*/
+        default: duel_assert(0);
       }
    }
 

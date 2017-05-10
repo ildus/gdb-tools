@@ -274,8 +274,8 @@ LFUNC tctype* find_numeric_result_type(tvalue *v1,tvalue *v2,
     if(t1==ctype_longlong  || t2==ctype_longlong)  return r->ctype=ctype_longlong ;
     if(t1==ctype_ulong  || t2==ctype_ulong)  return r->ctype=ctype_ulong ;
     if(sizeof(unsigned)==sizeof(long) &&
-       (t1==ctype_long && t2==ctype_uint  ||
-        t1==ctype_uint && t2==ctype_long))    return r->ctype=ctype_ulong ;
+       ((t1==ctype_long && t2==ctype_uint)  ||
+        (t1==ctype_uint && t2==ctype_long)))  return r->ctype=ctype_ulong ;
     if(t1==ctype_long  || t2==ctype_long)     return r->ctype=ctype_long ;
     if(t1==ctype_uint  || t2==ctype_uint)     return r->ctype=ctype_uint ;
     return r->ctype=ctype_int ;
@@ -669,7 +669,7 @@ mk_func_compare(do_op_gt,>, ">", "x>y", "y>x",FALSE)
 
 /* do_compare_questionmark -- handle the <? >? etc ops */
 
-LFUNC bool do_compare_questionmark(topcode op,tvalue *v1,tvalue *v2,tvalue *r)
+LFUNC bool do_compare_questionmark(int op,tvalue *v1,tvalue *v2,tvalue *r)
 {
    tvalue tmp ;
    tmp= *v1 ;
@@ -1157,14 +1157,14 @@ FUNC bool duel_do_op_to(tvalue *v1,tvalue *v2,int n,tvalue *r)
     if(a<=b) inc=1 ;
     else inc= -1 ;
     x=a+n*inc ;
-    if(inc>0 && x>b || inc<0 && x<b) return FALSE ;
+    if((inc>0 && x>b) || (inc<0 && x<b)) return FALSE ;
 
     r->val_kind=VK_RVALUE ;
     r->ctype=ctype_int ;
     r->u.rval_int=x ;
     if(v1) p=v1->symb_val ;
     else   p=v2->symb_val ;
-    if(     *p=='0'  && p[1]=='x'  || p[1]=='X')  fmt="0x%x" ;
+    if(    (*p=='0'  && p[1]=='x') || p[1]=='X')  fmt="0x%x" ;
     else if(*p=='0'  && p[1]>='0'  && p[1]<='7')  fmt="0%o"  ;
     else if(*p=='\'' && isascii(x) && isprint(x)) fmt="'%c'" ;
     else                                          fmt="%d"   ;
@@ -1204,7 +1204,7 @@ PROC duel_do_cast(tctype *tout,tvalue *v)
  * destoryed (of course)
  */
 
-PROC duel_apply_unary_op(topcode op,tvalue *v)
+PROC duel_apply_unary_op(int op,tvalue *v)
 {
    switch(op) {
       case '(':  do_op_parenthesis(v);            break ;
@@ -1240,7 +1240,7 @@ PROC duel_apply_post_unary_op(topcode op,tvalue *v)
  *       (ops like '+' always return true. ops like '<=?' also return false)
  */
 
-FUNC bool duel_apply_bin_op(topcode op,tvalue *v1,tvalue *v2,tvalue *r)
+FUNC bool duel_apply_bin_op(int op,tvalue *v1,tvalue *v2,tvalue *r)
 {
   switch(op) {
    case '[': do_op_index(v1,v2,r); break ;

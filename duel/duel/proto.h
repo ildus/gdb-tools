@@ -51,9 +51,9 @@ PROC duel_get_struct_val(tvalue *v,char *op);
 PROC duel_get_struct_ptr_val(tvalue *v,char *op);
 FUNC int duel_get_int_val(tvalue *v,char *op);
 FUNC int duel_get_posint_val(tvalue *v,char *op);
-PROC duel_apply_unary_op(topcode op,tvalue *v);
+PROC duel_apply_unary_op(int op,tvalue *v);
 PROC duel_apply_post_unary_op(topcode op,tvalue *v);
-FUNC bool duel_apply_bin_op(topcode op,tvalue *v1,tvalue *v2,tvalue *r);
+FUNC bool duel_apply_bin_op(int op,tvalue *v1,tvalue *v2,tvalue *r);
 PROC duel_find_func_frame(tvalue *v,char *op);
 
 /* output management */

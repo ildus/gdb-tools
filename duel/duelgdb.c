@@ -524,7 +524,6 @@ FUNC bool duel_get_target_variable(const char *name, int frame_no, tvalue *v)
   struct symbol *sym;
   struct frame_info * frame ;
   struct block *blk ;
-  int len ;
   struct value *gv ;                    /* gdb value */
 
   if(frame_no== -1) {           /* use the user selected frame and block */

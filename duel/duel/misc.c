@@ -49,7 +49,7 @@ FUNC ttarget_ptr duel_alloc_target_space(size_t n)
 
   if(!duel_get_target_variable("malloc",-1,&f) ||
      f.ctype->type_kind!=CTK_FUNC ||
-     f.ctype->u.kid->type_kind!=CTK_INT && f.ctype->u.kid->type_kind!=CTK_PTR)
+     (f.ctype->u.kid->type_kind!=CTK_INT && f.ctype->u.kid->type_kind!=CTK_PTR))
       duel_fatal("malloc() function returning a pointer required in target");
 
   duel_target_func_call(&f,parms,1,&r);

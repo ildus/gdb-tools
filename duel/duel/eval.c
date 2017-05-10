@@ -94,9 +94,9 @@ LFUNC bool find_dot_name(const char *name,tvalue *v,bool top_only)
     for(i=dot_stack_top ; i>=0 ; i--) {           /* look at the stack[i]    */
         if(top_only && i!=dot_stack_top) break ;  /* consider only top of stk*/
         x=dot_stack[i].realv ;
-        if(name[0]=='_' && name[1]==0 ||                           /* _ */
-           name[1]=='_' && i==dot_stack_top-1 && name[2]==0 ||     /* __ */
-           name[1]=='0'+dot_stack_top-i && name[2]==0) {           /* _[0-9] */
+        if((name[0]=='_' && name[1]==0) ||                           /* _ */
+           (name[1]=='_' && i==dot_stack_top-1 && name[2]==0) ||     /* __ */
+           (name[1]=='0'+dot_stack_top-i && name[2]==0)) {           /* _[0-9] */
             *v = *x ;
             return TRUE ;
         }
