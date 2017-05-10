@@ -4,5 +4,4 @@
 .*.swp
 .gdb_history
 duel/build
-duel/tags
-duel/y.tab.c
+duel/duel/y.tab.c
